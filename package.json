@@ -1,0 +1,23 @@
+{
+  "name": "first",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.7",
+    "vite-plugin-wasm": "^3.5.0"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d": "^0.19.2",
+    "@tailwindcss/vite": "^4.1.14",
+    "tailwindcss": "^4.1.14",
+    "three": "^0.180.0"
+  }
+}
