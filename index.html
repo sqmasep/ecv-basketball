@@ -7,8 +7,95 @@
     <title>first</title>
   </head>
   <body class="overflow-hidden">
-    <canvas class="absolute inset-0" id="renderer"></canvas>
-    <div class="text-red-400">yo</div>
-    <script type="module" src="/src/main.ts"></script>
+    <!-- start screen -->
+    <div
+      id="start-screen"
+      class="fixed inset-0 bg-zinc-800 gap-12 text-white z-50000 grid place-items-center place-content-center"
+    >
+      <span class="text-6xl uppercase">gigabasketball9001</span>
+      <div
+        id="start-time-selector"
+        class="flex items-center gap-2 justify-center"
+      >
+        <button
+          data-value="30"
+          data-selected
+          class="rounded-lg data-selected:bg-white data-selected:text-black border border-zinc-300"
+        >
+          30s
+        </button>
+        <button
+          data-value="60"
+          class="rounded-lg data-selected:bg-white data-selected:text-black border border-zinc-300"
+        >
+          60s
+        </button>
+        <button
+          data-value="90"
+          class="rounded-lg data-selected:bg-white data-selected:text-black border border-zinc-300"
+        >
+          90s
+        </button>
+      </div>
+
+      <button
+        id="start-button"
+        class="uppercase"
+        data-color="secondary"
+        data-size="large"
+      >
+        Start
+      </button>
+    </div>
+
+    <!-- game over screen -->
+    <div
+      id="game-over-screen"
+      class="fixed hidden inset-0 bg-zinc-800 text-white z-50000"
+    >
+      <div id="game-over-points"></div>
+
+      <button id="game-over-button" data-color="secondary" data-size="large">
+        Restart
+      </button>
+    </div>
+
+    <!-- game -->
+    <div id="game-screen" class="fixed inset-0 z-40">
+      <!-- renderer -->
+      <canvas class="absolute inset-0" id="renderer"></canvas>
+
+      <!-- gui -->
+      <div
+        id="gui"
+        class="fixed flex flex-col gap-4 w-2/3 bottom-4 left-1/2 -translate-x-1/2 z-50000 text-white"
+      >
+        <!-- power bar -->
+        <div
+          class="w-1/2 mx-auto relative border-2 border-zinc-500 outline-4 outline-zinc-700 rounded-lg h-4 group"
+        >
+          <div
+            id="power-bar"
+            class="scale-x-0 rounded-full absolute inset-1 bg-amber-300 transition-transform duration-[20] origin-left"
+          ></div>
+        </div>
+
+        <!-- stats -->
+        <div
+          class="flex items-center px-6 py-2 border border-zinc-600 bg-zinc-300/10 backdrop-blur-xl rounded-full justify-between"
+        >
+          <span id="ball-count" class="text-3xl"></span>
+
+          <div class="flex gap-4 items-center">
+            <div class="text-2xl"><span id="remaining-time"></span>s</div>
+            <div class="bg-black">
+              <span id="points" class="text-4xl">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/physics.ts"></script>
   </body>
 </html>

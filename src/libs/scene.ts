@@ -5,6 +5,7 @@ import { Debugger } from "./debugger";
 import { Interaction } from "./interaction";
 import { Ball } from "./ball";
 import { Cube } from "./cube";
+import { GLTFLoader } from "three/examples/jsm/Addons.js";
 
 export class Scene extends THREE.Scene {
   engine: Engine;
@@ -42,6 +43,24 @@ export class Scene extends THREE.Scene {
   }
 
   load() {
+    // const gltfLoader = new GLTFLoader();
+    // const ballModelSource = gltfLoader.loadAsync("/ball.glb");
+
+    // ballModelSource.then(gltf => {
+    //   const ballMesh = gltf.scene.children[0] as THREE.Mesh;
+    //   Ball.sourceMesh = ballMesh;
+    //   this.add(ballMesh);
+    // });
+
+    // const sceneModelSource = gltfLoader.loadAsync("/scene.glb");
+    // sceneModelSource.then(gltf => {
+    //   gltf.scene.traverse(obj => {
+    //     if (obj instanceof THREE.Mesh) {
+    //       this.add(obj);
+    //     }
+    //   });
+    // });
+
     // ground
     const ground = new THREE.Mesh(
       new THREE.BoxGeometry(5, 0.2, 5),
@@ -91,6 +110,35 @@ export class Scene extends THREE.Scene {
         this.world.createCollider(RAPIER.ColliderDesc.cuboid(hx, hy, hz), body);
 
         cube.userData.rigidbody = body;
+      }
+
+      if (obj.name === "ball") {
+        const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic());
+
+        const ball = obj as THREE.Mesh;
+
+        ball.geometry.computeBoundingBox();
+        const box = ball.geometry.boundingBox!;
+        const radius = (box.max.x - box.min.x) * 0.5;
+
+        this.world.createCollider(RAPIER.ColliderDesc.ball(radius), body);
+
+        ball.userData.rigidbody = body;
+      }
+      console.log(obj.name);
+
+      if (obj.name === "ground") {
+        const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+        const ground = obj as THREE.Mesh;
+
+        ground.geometry.computeBoundingBox();
+        const box = ground.geometry.boundingBox!;
+        const hx = (box.max.x - box.min.x) * 0.5;
+        const hy = (box.max.y - box.min.y) * 0.5;
+        const hz = (box.max.z - box.min.z) * 0.5;
+
+        this.world.createCollider(RAPIER.ColliderDesc.cuboid(hx, hy, hz), body);
+        ground.userData.rigidbody = body;
       }
 
       // if (obj.name === "Ball") {
