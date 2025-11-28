@@ -10,6 +10,7 @@ import { GLTFLoader, OrbitControls } from "three/examples/jsm/Addons.js";
 export class Scene extends THREE.Scene {
   engine: Engine;
   world: RAPIER.World;
+  eventQueue: RAPIER.EventQueue;
   camera: THREE.PerspectiveCamera;
   debugger: Debugger;
   physicsDebugger: (world: RAPIER.World) => void;
@@ -23,6 +24,7 @@ export class Scene extends THREE.Scene {
     this.engine = engine;
 
     this.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    this.eventQueue = new RAPIER.EventQueue(true);
 
     this.camera = new THREE.PerspectiveCamera();
     this.camera.position.z = 10;
@@ -72,18 +74,6 @@ export class Scene extends THREE.Scene {
 
     new OrbitControls(this.camera, this.engine.renderer.domElement);
 
-    // cube
-    // const HEIGHT = 3;
-    // Array.from({ length: HEIGHT }).forEach((_, i) => {
-    //   Array.from({ length: HEIGHT - i }).forEach((_, j) => {
-    //     const cube = new Cube(this.world);
-    //     cube.mesh.position.x = (j - (HEIGHT - i - 1) * 0.5) * 1.1;
-    //     cube.mesh.position.y = i + 0.5;
-
-    //     this.add(cube.mesh);
-    //   });
-    // });
-
     const basket = new THREE.Group();
 
     const pole = new THREE.Mesh(
@@ -120,27 +110,26 @@ export class Scene extends THREE.Scene {
         const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
         body.setTranslation(new RAPIER.Vector3(0, 1, 0.5), true);
 
-        body.setRotation(
-          {
-            x: 1,
-            y: 0,
-            z: 0,
-            w: 1,
-          },
-          true
-        );
+        const rotation = new THREE.Euler(THREE.MathUtils.degToRad(90), 0, 0);
+        const quaternion = new THREE.Quaternion();
+        quaternion.setFromEuler(rotation.clone());
+
+        body.setRotation(quaternion.clone(), true);
 
         const hook = obj as THREE.Mesh;
-        const collider = RAPIER.ColliderDesc.cylinder(0.01, 0.2);
-        collider.setRotation({
-          x: 1,
-          y: 0,
-          z: 0,
-          w: 1,
-        });
-        collider.setSensor(true);
 
-        this.world.createCollider(collider, body);
+        const ring = new THREE.RingGeometry(0.48, 0.52, 32);
+        const physicsCollider = RAPIER.ColliderDesc.trimesh(
+          ring.attributes.position.array as Float32Array,
+          ring.index!.array as Uint32Array
+        );
+
+        const sensorCollider = RAPIER.ColliderDesc.cylinder(0.05, 0.4);
+        sensorCollider.setRotation(quaternion);
+        sensorCollider.setSensor(true);
+
+        this.world.createCollider(physicsCollider, body);
+        this.world.createCollider(sensorCollider, body);
         hook.userData.rigidbody = body;
       }
       if (obj.name === "Ground") {
@@ -157,65 +146,6 @@ export class Scene extends THREE.Scene {
         ground.userData.rigidbody = body;
         ground.userData.rigidbody.setTranslation({ x: 0, y: -1, z: 0 }, true);
       }
-
-      // if (obj.name === "Cube") {
-      //   const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic());
-
-      //   cube.geometry.computeBoundingBox();
-      //   const box = cube.geometry.boundingBox!;
-      //   const hx = (box.max.x - box.min.x) * 0.5;
-      //   const hy = (box.max.y - box.min.y) * 0.5;
-      //   const hz = (box.max.z - box.min.z) * 0.5;
-
-      //   this.world.createCollider(RAPIER.ColliderDesc.cuboid(hx, hy, hz), body);
-
-      //   cube.userData.rigidbody = body;
-      // }
-
-      // if (obj.name === "ball") {
-      //   const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.dynamic());
-
-      //   const ball = obj as THREE.Mesh;
-
-      //   ball.geometry.computeBoundingBox();
-      //   const box = ball.geometry.boundingBox!;
-      //   const radius = (box.max.x - box.min.x) * 0.5;
-
-      //   this.world.createCollider(RAPIER.ColliderDesc.ball(radius), body);
-
-      //   ball.userData.rigidbody = body;
-      // }
-      // console.log(obj.name);
-
-      // if (obj.name === "ground") {
-      //   const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-      //   const ground = obj as THREE.Mesh;
-
-      //   ground.geometry.computeBoundingBox();
-      //   const box = ground.geometry.boundingBox!;
-      //   const hx = (box.max.x - box.min.x) * 0.5;
-      //   const hy = (box.max.y - box.min.y) * 0.5;
-      //   const hz = (box.max.z - box.min.z) * 0.5;
-
-      //   this.world.createCollider(RAPIER.ColliderDesc.cuboid(hx, hy, hz), body);
-      //   ground.userData.rigidbody = body;
-      // }
-
-      // if (obj.name === "Ball") {
-      //   const body = this.world.createRigidBody(
-      //     RAPIER.RigidBodyDesc.kinematicVelocityBased()
-      //   );
-
-      //   ball.geometry.computeBoundingBox();
-      //   const box = ball.geometry.boundingBox!;
-      //   const radius = (box.max.x - box.min.x) * 0.5;
-
-      //   this.world.createCollider(RAPIER.ColliderDesc.ball(radius), body);
-
-      //   body.setTranslation({ x: -10000, y: -10000, z: -10000 }, true);
-
-      //   ball.userData.rigidbody = body;
-      // }
     });
 
     this.physicsDebugger = this.debugger.createPhysicsDebugger(this);
@@ -233,7 +163,13 @@ export class Scene extends THREE.Scene {
 
     const delta = this.engine.clock.getDelta();
     this.world.timestep = delta;
-    this.world.step();
+    this.world.step(this.eventQueue);
+    this.eventQueue.drainCollisionEvents((h1, h2, started) => {
+      console.log("collision", h1, h2, started);
+      if (started) {
+        this.engine.game?.incrementPoints();
+      }
+    });
 
     this.syncPhysics();
     this.physicsDebugger(this.world);

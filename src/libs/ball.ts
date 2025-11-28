@@ -9,7 +9,7 @@ export class Ball {
     const ball = new THREE.Mesh(
       new THREE.SphereGeometry(0.25),
       new THREE.MeshBasicMaterial({
-        color: "yellow",
+        color: "orange",
       })
     );
     ball.name = `Ball-${ball.id}`;
@@ -22,7 +22,11 @@ export class Ball {
     const box = this.mesh.geometry.boundingBox!;
     const radius = (box.max.x - box.min.x) * 0.5;
 
-    world.createCollider(RAPIER.ColliderDesc.ball(radius), body);
+    const collider = world.createCollider(
+      RAPIER.ColliderDesc.ball(radius),
+      body
+    );
+    collider.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
 
     this.mesh.userData.rigidbody = body;
   }
