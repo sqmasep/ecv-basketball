@@ -13,7 +13,7 @@ export class Debugger {
     this.gui = new GUI();
 
     this.domElement = document.createElement("div");
-    this.domElement.append(this.stats.dom, this.gui.domElement);
+    // this.domElement.append(this.stats.dom, this.gui.domElement);
   }
 
   createPhysicsDebugger(parent: THREE.Object3D) {
@@ -27,6 +27,7 @@ export class Debugger {
     );
     mesh.renderOrder = 1000;
 
+    return () => {};
     parent.add(mesh);
 
     return (world: RAPIER.World) => {
@@ -36,14 +37,14 @@ export class Debugger {
     };
   }
 
-  createPointerDebugger(parent: THREE.Object3D) {
+  createPointerDebugger(_parent: THREE.Object3D) {
     const pointerDebugger = new THREE.Mesh(
       new THREE.BoxGeometry(),
       new THREE.MeshBasicMaterial({ color: "yellow", depthTest: false })
     );
     pointerDebugger.position.y = 1;
     pointerDebugger.renderOrder = 1000;
-    // parent.add(pointerDebugger);
+    // _parent.add(pointerDebugger);
 
     return pointerDebugger;
   }

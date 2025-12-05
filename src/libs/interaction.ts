@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { UI } from "./UI";
 
 const POINTER_DEFAULT_POSITION = 10000;
-export const MAX_POWER = 150;
+export const MAX_POWER = 300;
 
 export class Interaction {
   pointer: THREE.Vector3;
@@ -33,7 +33,7 @@ export class Interaction {
 
         this.powerInterval = setInterval(() => {
           const diff = Date.now() - (this.pressStartedAt || 0);
-          const power = diff / 6;
+          const power = diff / 8;
           const clampedPower = Math.min(power, MAX_POWER);
           this.power = clampedPower;
           UI.updatePower(this.power);

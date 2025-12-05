@@ -52,6 +52,14 @@ export class Scene extends THREE.Scene {
     light.position.set(5, 10, 7.5);
     this.add(light);
 
+    // point light
+    const pointLight = new THREE.PointLight("white", 0.5);
+    pointLight.position.set(-5, 5, -5);
+    this.add(pointLight);
+
+    const ambientLight = new THREE.AmbientLight("white", 1);
+    this.add(ambientLight);
+
     const gltfLoader = new GLTFLoader();
 
     gltfLoader.load("/basket.glb", gltf => {
@@ -195,21 +203,33 @@ export class Scene extends THREE.Scene {
       }
     });
 
-    // goated copilot demo:
     // orbit but limited to +/-90° so the camera never goes behind the center
     const time = this.engine.clock.getElapsedTime();
-    const radius = 15;
-    const speed = 0.05;
-    const center = new THREE.Vector3(0, 3, 0);
-    const y = this.camera.position.y;
-    // angle oscillates in [-PI/2, PI/2] -> max 180°
-    const angle = Math.sin(time * speed) * (Math.PI / 2);
+
+    // angular orbit
+    const angleSpeed = 0.05;
+    const angle = Math.sin(time * angleSpeed) * (Math.PI / 2); // [-PI/2, PI/2]
+
+    // radial oscillation (closer / further)
+    const baseRadius = 12;
+    const radiusAmp = 4; // how much closer/further the camera moves
+    const radiusSpeed = 0.12; // radial oscillation speed
+    const radius = baseRadius + Math.sin(time * radiusSpeed) * radiusAmp;
+
+    // keep the camera's current height, but you can tweak this if you want
+    const camY = this.camera.position.y;
+
+    // when camera is closer (radius < baseRadius) look a bit higher
+    const baseLookAtY = 3;
+    const lookUpFactor = 0.12; // how much to raise the lookAt when closer
+    const lookAtY = baseLookAtY + (baseRadius - radius) * lookUpFactor;
+
     this.camera.position.set(
       Math.cos(angle) * radius,
-      y,
+      camY,
       Math.sin(angle) * radius
     );
-    this.camera.lookAt(center);
+    this.camera.lookAt(0, lookAtY, 0);
 
     this.syncPhysics();
     this.physicsDebugger(this.world);
