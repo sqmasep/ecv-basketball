@@ -4,8 +4,7 @@ import * as RAPIER from "@dimforge/rapier3d";
 import { Debugger } from "./debugger";
 import { Interaction } from "./interaction";
 import { Ball } from "./ball";
-import { Cube } from "./cube";
-import { GLTFLoader, OrbitControls } from "three/examples/jsm/Addons.js";
+import { GLTFLoader } from "three/examples/jsm/Addons.js";
 
 export class Scene extends THREE.Scene {
   engine: Engine;
@@ -45,108 +44,107 @@ export class Scene extends THREE.Scene {
   }
 
   load() {
-    // const gltfLoader = new GLTFLoader();
-    // const ballModelSource = gltfLoader.loadAsync("/ball.glb");
-
-    // ballModelSource.then(gltf => {
-    //   const ballMesh = gltf.scene.children[0] as THREE.Mesh;
-    //   Ball.sourceMesh = ballMesh;
-    //   this.add(ballMesh);
-    // });
-
-    // const sceneModelSource = gltfLoader.loadAsync("/scene.glb");
-    // sceneModelSource.then(gltf => {
-    //   gltf.scene.traverse(obj => {
-    //     if (obj instanceof THREE.Mesh) {
-    //       this.add(obj);
-    //     }
-    //   });
-    // });
-
-    // ground
-    const ground = new THREE.Mesh(
-      new THREE.BoxGeometry(5, 0.2, 5),
-      new THREE.MeshBasicMaterial({ color: "blue" })
-    );
-    ground.name = "Ground";
-    ground.position.y = -1;
-    this.add(ground);
-
-    this.camera.position.set(0, 2, 12);
+    this.camera.position.set(15, 3, 0);
+    this.camera.lookAt(0, 2, 0);
     // new OrbitControls(this.camera, this.engine.renderer.domElement);
 
-    const basket = new THREE.Group();
+    const light = new THREE.DirectionalLight("white", 1);
+    light.position.set(5, 10, 7.5);
+    this.add(light);
 
-    const pole = new THREE.Mesh(
-      new THREE.BoxGeometry(2, 4, 0.2),
-      new THREE.MeshBasicMaterial({ color: "brown" })
-    );
-    pole.name = "pole";
-    pole.position.set(3, 1, 0);
-    basket.add(pole);
+    const gltfLoader = new GLTFLoader();
 
-    const taurus = new THREE.Mesh(
-      new THREE.TorusGeometry(0.5, 0.05, 16, 100),
-      new THREE.MeshBasicMaterial({ color: "red" })
-    );
-    taurus.name = "hook";
-    basket.add(taurus);
-
-    this.add(basket);
+    gltfLoader.load("/basket.glb", gltf => {
+      this.add(gltf.scene);
+    });
 
     this.traverse(obj => {
-      if (obj.name === "pole") {
+      if (["pole", "plush", "ground", "support"].includes(obj.name)) {
+        const object = obj as THREE.Mesh;
         const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-        const pole = obj as THREE.Mesh;
-        pole.geometry.computeBoundingBox();
-        const box = pole.geometry.boundingBox!;
-        const hx = (box.max.x - box.min.x) * 0.5;
-        const hy = (box.max.y - box.min.y) * 0.5;
-        const hz = (box.max.z - box.min.z) * 0.5;
-        this.world.createCollider(RAPIER.ColliderDesc.cuboid(hx, hy, hz), body);
-        pole.userData.rigidbody = body;
-      }
 
-      if (obj.name === "hook") {
-        const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-        body.setTranslation(new RAPIER.Vector3(0, 1, 0.5), true);
+        const vertices = object.geometry.attributes.position.array;
+        const indices = object.geometry.index!.array;
 
-        const rotation = new THREE.Euler(THREE.MathUtils.degToRad(90), 0, 0);
-        const quaternion = new THREE.Quaternion();
-        quaternion.setFromEuler(rotation.clone());
-
-        body.setRotation(quaternion.clone(), true);
-
-        const hook = obj as THREE.Mesh;
-
-        const ring = new THREE.RingGeometry(0.48, 0.52, 32);
-        const physicsCollider = RAPIER.ColliderDesc.trimesh(
-          ring.attributes.position.array as Float32Array,
-          ring.index!.array as Uint32Array
+        const colliderDesc = RAPIER.ColliderDesc.trimesh(
+          new Float32Array(vertices),
+          new Uint32Array(indices)
         );
 
-        const sensorCollider = RAPIER.ColliderDesc.cylinder(0.05, 0.4);
-        sensorCollider.setRotation(quaternion);
-        sensorCollider.setSensor(true);
+        this.world.createCollider(colliderDesc, body);
 
-        this.world.createCollider(physicsCollider, body);
-        this.world.createCollider(sensorCollider, body);
-        hook.userData.rigidbody = body;
+        body.setTranslation(obj.position, true);
       }
-      if (obj.name === "Ground") {
+
+      if (obj.name === "target") {
+        const group = obj as THREE.Group;
+        const targetMesh = group.children[0] as THREE.Mesh;
         const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
 
-        ground.geometry.computeBoundingBox();
-        const box = ground.geometry.boundingBox!;
+        targetMesh.geometry.computeBoundingBox();
+        const box = targetMesh.geometry.boundingBox!;
         const hx = (box.max.x - box.min.x) * 0.5;
         const hy = (box.max.y - box.min.y) * 0.5;
         const hz = (box.max.z - box.min.z) * 0.5;
-
         this.world.createCollider(RAPIER.ColliderDesc.cuboid(hx, hy, hz), body);
-
-        ground.userData.rigidbody = body;
-        ground.userData.rigidbody.setTranslation({ x: 0, y: -1, z: 0 }, true);
+        body.setTranslation(group.position, true);
       }
+
+      if (obj.name === "basket") {
+        const group = obj as THREE.Mesh;
+
+        // for group.children
+        group.children.forEach((c, i) => {
+          const child = c as THREE.Mesh;
+          // console.log("basket child", child.name);
+          const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+
+          if (i === 1) {
+            const sensorCollider = RAPIER.ColliderDesc.cylinder(0.05, 0.4);
+            sensorCollider.setSensor(true);
+            sensorCollider.translation = child.getWorldPosition(
+              new THREE.Vector3()
+            );
+            this.world.createCollider(sensorCollider, body);
+          }
+
+          const vertices = child.geometry.attributes.position.array;
+          const indices = child.geometry.index!.array;
+
+          const colliderDesc = RAPIER.ColliderDesc.trimesh(
+            new Float32Array(vertices),
+            new Uint32Array(indices)
+          );
+
+          colliderDesc.translation = child.getWorldPosition(
+            new THREE.Vector3()
+          );
+
+          this.world.createCollider(colliderDesc, body);
+          child.userData.rigidbody = body;
+        });
+      }
+
+      // if (obj.name === "hook") {
+      //   const body = this.world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+      //   body.setTranslation(new RAPIER.Vector3(0, 1, 0.5), true);
+      //   const rotation = new THREE.Euler(THREE.MathUtils.degToRad(90), 0, 0);
+      //   const quaternion = new THREE.Quaternion();
+      //   quaternion.setFromEuler(rotation.clone());
+      //   body.setRotation(quaternion.clone(), true);
+      //   const hook = obj as THREE.Mesh;
+      //   const ring = new THREE.RingGeometry(0.48, 0.52, 32);
+      //   const physicsCollider = RAPIER.ColliderDesc.trimesh(
+      //     ring.attributes.position.array as Float32Array,
+      //     ring.index!.array as Uint32Array
+      //   );
+      //   const sensorCollider = RAPIER.ColliderDesc.cylinder(0.05, 0.4);
+      //   sensorCollider.setRotation(quaternion);
+      //   sensorCollider.setSensor(true);
+      //   this.world.createCollider(physicsCollider, body);
+      //   this.world.createCollider(sensorCollider, body);
+      //   hook.userData.rigidbody = body;
+      // }
     });
 
     this.physicsDebugger = this.debugger.createPhysicsDebugger(this);
@@ -166,40 +164,52 @@ export class Scene extends THREE.Scene {
     this.world.timestep = delta;
     this.world.step(this.eventQueue);
     this.eventQueue.drainCollisionEvents((h1, h2, started) => {
-      console.log("collision", h1, h2, started);
-      // make it so only the ball and hook collisions count
-      // compare the parent rigid-body handles of the colliders so we can
-      // determine if one side is a ball body and the other side is the hook body
-      const hookBody = this.getObjectByName("hook")?.userData.rigidbody as
-        | RAPIER.RigidBody
-        | undefined;
-      if (!hookBody) return;
-
-      const hookBodyHandle = (hookBody as any).handle ?? null;
       const ballBodyHandles = this.balls.map(
         ball => (ball.mesh.userData.rigidbody as any)?.handle ?? null
       );
 
       const colliderA = this.world.getCollider(h1);
       const colliderB = this.world.getCollider(h2);
-      const parentHandleA = (colliderA?.parent() as any)?.handle ?? null;
-      const parentHandleB = (colliderB?.parent() as any)?.handle ?? null;
+      if (!colliderA || !colliderB) return;
 
-      if (
-        (ballBodyHandles.includes(parentHandleA) &&
-          parentHandleB === hookBodyHandle) ||
-        (ballBodyHandles.includes(parentHandleB) &&
-          parentHandleA === hookBodyHandle)
-      ) {
-        if (started) {
+      const isSensorA =
+        typeof (colliderA as any).isSensor === "function"
+          ? (colliderA as any).isSensor()
+          : !!(colliderA as any).sensor;
+      const isSensorB =
+        typeof (colliderB as any).isSensor === "function"
+          ? (colliderB as any).isSensor()
+          : !!(colliderB as any).sensor;
+
+      const parentHandleA = (colliderA.parent() as any)?.handle ?? null;
+      const parentHandleB = (colliderB.parent() as any)?.handle ?? null;
+
+      // increment points when a ball enters the sensor (on collision start)
+      if (started) {
+        if (
+          (isSensorA && ballBodyHandles.includes(parentHandleB)) ||
+          (isSensorB && ballBodyHandles.includes(parentHandleA))
+        ) {
           this.engine.game?.incrementPoints();
         }
       }
-
-      // if (started) {
-      //   this.engine.game?.incrementPoints();
-      // }
     });
+
+    // goated copilot demo:
+    // orbit but limited to +/-90° so the camera never goes behind the center
+    const time = this.engine.clock.getElapsedTime();
+    const radius = 15;
+    const speed = 0.05;
+    const center = new THREE.Vector3(0, 3, 0);
+    const y = this.camera.position.y;
+    // angle oscillates in [-PI/2, PI/2] -> max 180°
+    const angle = Math.sin(time * speed) * (Math.PI / 2);
+    this.camera.position.set(
+      Math.cos(angle) * radius,
+      y,
+      Math.sin(angle) * radius
+    );
+    this.camera.lookAt(center);
 
     this.syncPhysics();
     this.physicsDebugger(this.world);
