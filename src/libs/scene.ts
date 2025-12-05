@@ -72,7 +72,8 @@ export class Scene extends THREE.Scene {
     ground.position.y = -1;
     this.add(ground);
 
-    new OrbitControls(this.camera, this.engine.renderer.domElement);
+    this.camera.position.set(0, 2, 12);
+    // new OrbitControls(this.camera, this.engine.renderer.domElement);
 
     const basket = new THREE.Group();
 
@@ -166,9 +167,38 @@ export class Scene extends THREE.Scene {
     this.world.step(this.eventQueue);
     this.eventQueue.drainCollisionEvents((h1, h2, started) => {
       console.log("collision", h1, h2, started);
-      if (started) {
-        this.engine.game?.incrementPoints();
+      // make it so only the ball and hook collisions count
+      // compare the parent rigid-body handles of the colliders so we can
+      // determine if one side is a ball body and the other side is the hook body
+      const hookBody = this.getObjectByName("hook")?.userData.rigidbody as
+        | RAPIER.RigidBody
+        | undefined;
+      if (!hookBody) return;
+
+      const hookBodyHandle = (hookBody as any).handle ?? null;
+      const ballBodyHandles = this.balls.map(
+        ball => (ball.mesh.userData.rigidbody as any)?.handle ?? null
+      );
+
+      const colliderA = this.world.getCollider(h1);
+      const colliderB = this.world.getCollider(h2);
+      const parentHandleA = (colliderA?.parent() as any)?.handle ?? null;
+      const parentHandleB = (colliderB?.parent() as any)?.handle ?? null;
+
+      if (
+        (ballBodyHandles.includes(parentHandleA) &&
+          parentHandleB === hookBodyHandle) ||
+        (ballBodyHandles.includes(parentHandleB) &&
+          parentHandleA === hookBodyHandle)
+      ) {
+        if (started) {
+          this.engine.game?.incrementPoints();
+        }
       }
+
+      // if (started) {
+      //   this.engine.game?.incrementPoints();
+      // }
     });
 
     this.syncPhysics();

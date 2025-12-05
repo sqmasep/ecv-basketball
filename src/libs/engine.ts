@@ -21,13 +21,11 @@ export class Engine {
 
   setScene(S: new (engine: Engine) => Scene) {
     this.scene = new S(this);
-    this.scene.game = this.game;
     this.resize();
   }
 
   setGame(game: Game) {
     this.game = game;
-    this.scene!.game = game;
   }
 
   setPixelRatio(pixelRatio: number) {
